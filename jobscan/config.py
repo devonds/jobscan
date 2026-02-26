@@ -1,9 +1,9 @@
 """Configuration management for jobscan CLI."""
 
 import os
-import tomllib
 from pathlib import Path
 
+import tomllib
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
@@ -21,13 +21,20 @@ def get_config_path() -> Path:
     return get_config_dir() / "config.toml"
 
 
+def get_database_path() -> Path:
+    """Get the default database path."""
+    return get_config_dir() / "jobscan.db"
+
+
 class Config(BaseModel):
     """Application configuration."""
 
     # File paths
     resume_path: Path
     cover_letter_template_path: Path
-    output_directory: Path = Field(default_factory=lambda: Path.home() / "Documents" / "cover_letters")
+    output_directory: Path = Field(
+        default_factory=lambda: Path.home() / "Documents" / "cover_letters"
+    )
 
     # Google Sheets
     spreadsheet_id: str | None = None
@@ -41,6 +48,16 @@ class Config(BaseModel):
     # Google credentials
     google_credentials_path: Path | None = None
 
+    # Slack configuration
+    slack_user_token: str | None = None
+    slack_channels: dict[str, str] = Field(default_factory=dict)  # alias -> channel_id
+
+    # Storage configuration
+    database_path: Path = Field(default_factory=get_database_path)
+
+    # Matching configuration
+    min_match_score: int = 50
+
     @field_validator("resume_path", "cover_letter_template_path", "output_directory", mode="before")
     @classmethod
     def expand_path(cls, v: str | Path) -> Path:
@@ -49,7 +66,7 @@ class Config(BaseModel):
             return Path(v).expanduser()
         return v.expanduser()
 
-    @field_validator("google_credentials_path", mode="before")
+    @field_validator("google_credentials_path", "database_path", mode="before")
     @classmethod
     def expand_optional_path(cls, v: str | Path | None) -> Path | None:
         """Expand ~ in optional paths."""
@@ -85,6 +102,14 @@ class Config(BaseModel):
                 config_data.update(toml_data["sheets"])
             if "cover_letter" in toml_data:
                 config_data.update(toml_data["cover_letter"])
+            if "slack" in toml_data:
+                slack_data = toml_data["slack"]
+                if "channels" in slack_data:
+                    config_data["slack_channels"] = slack_data["channels"]
+            if "storage" in toml_data:
+                config_data.update(toml_data["storage"])
+            if "matching" in toml_data:
+                config_data.update(toml_data["matching"])
 
         # Override with environment variables
         if api_key := os.environ.get("ANTHROPIC_API_KEY"):
@@ -92,6 +117,10 @@ class Config(BaseModel):
 
         if creds_path := os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON"):
             config_data["google_credentials_path"] = creds_path
+
+        # Slack token from environment only (never from config file for security)
+        if slack_token := os.environ.get("SLACK_USER_TOKEN"):
+            config_data["slack_user_token"] = slack_token
 
         return cls(**config_data)
 

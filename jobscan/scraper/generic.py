@@ -1,7 +1,6 @@
 """Generic scraper that works with most job listing sites."""
 
 import json
-import re
 from urllib.parse import urlparse
 
 import httpx

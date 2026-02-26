@@ -6,7 +6,6 @@ from anthropic import Anthropic
 
 from jobscan.models.job import JobListing
 
-
 # Pricing per million tokens (as of 2025)
 PRICING = {
     "claude-sonnet-4-5-20250929": {"input": 3.00, "output": 15.00},
