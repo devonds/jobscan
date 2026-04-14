@@ -64,6 +64,16 @@ class Database:
                     "INSERT INTO schema_version (version) VALUES (?)",
                     (SCHEMA_VERSION,),
                 )
+            else:
+                current_version = row[0]
+                if current_version < 2:
+                    try:
+                        conn.execute("ALTER TABLE slack_jobs ADD COLUMN is_relevant BOOLEAN")
+                        conn.execute("ALTER TABLE slack_jobs ADD COLUMN engagement_type_label TEXT")
+                        conn.execute("ALTER TABLE slack_jobs ADD COLUMN relevance_reason TEXT")
+                    except sqlite3.OperationalError:
+                        pass
+                    conn.execute("UPDATE schema_version SET version = ?", (2,))
 
     def upsert_job(self, job: SlackJobPosting) -> int:
         """Insert or update a job posting. Returns row ID."""
@@ -77,8 +87,9 @@ class Database:
                     posted_by_user_id, posted_at, company, position,
                     location, salary_min, salary_max, salary_currency,
                     employment_type, work_mode, raw_message, parsed_description,
-                    job_url, scraped_description, skills_mentioned, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    job_url, scraped_description, skills_mentioned, updated_at,
+                    is_relevant, engagement_type_label, relevance_reason
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(message_ts, channel_id) DO UPDATE SET
                     company = excluded.company,
                     position = excluded.position,
@@ -91,7 +102,10 @@ class Database:
                     job_url = excluded.job_url,
                     scraped_description = excluded.scraped_description,
                     skills_mentioned = excluded.skills_mentioned,
-                    updated_at = excluded.updated_at
+                    updated_at = excluded.updated_at,
+                    is_relevant = excluded.is_relevant,
+                    engagement_type_label = excluded.engagement_type_label,
+                    relevance_reason = excluded.relevance_reason
                 RETURNING id
                 """,
                 (
@@ -115,6 +129,9 @@ class Database:
                     job.scraped_description,
                     skills_json,
                     datetime.now(),
+                    job.is_relevant,
+                    job.engagement_type_label,
+                    job.relevance_reason,
                 ),
             )
             row = cursor.fetchone()
@@ -306,4 +323,7 @@ class Database:
             applied=bool(row["applied"]),
             applied_at=row["applied_at"],
             match_score=row["match_score"],
+            is_relevant=row["is_relevant"] if "is_relevant" in row.keys() else None,
+            engagement_type_label=row["engagement_type_label"] if "engagement_type_label" in row.keys() else None,
+            relevance_reason=row["relevance_reason"] if "relevance_reason" in row.keys() else None,
         )

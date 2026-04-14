@@ -72,6 +72,11 @@ class SlackJobPosting(BaseModel):
     applied_at: datetime | None = None
     match_score: float | None = None
 
+    # Relevance Assessment
+    is_relevant: bool | None = None
+    engagement_type_label: str | None = None
+    relevance_reason: str | None = None
+
     @classmethod
     def from_message_and_parsed(
         cls,

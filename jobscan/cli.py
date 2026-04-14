@@ -244,6 +244,8 @@ def scrape(
     # Initialize components
     db = Database(cfg.database_path)
     parser = JobMessageParser(api_key=cfg.anthropic_api_key, model=cfg.model)
+    from jobscan.matcher.relevance import RelevanceAssessor
+    assessor = RelevanceAssessor(api_key=cfg.anthropic_api_key, model=cfg.model)
 
     total_jobs = 0
     total_messages = 0
@@ -306,6 +308,12 @@ def scrape(
                                             job.location = scraped.location
                                     except Exception:
                                         pass  # Silently skip failed URL scrapes
+
+                                # Assess custom relevance
+                                try:
+                                    assessor.assess(job)
+                                except Exception as e:
+                                    click.echo(f"  Relevance assessment failed: {e}", err=True)
 
                                 # Save to database
                                 db.upsert_job(job)

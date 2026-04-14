@@ -1,6 +1,6 @@
 """Database schema definitions for SQLite storage."""
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 CREATE_TABLES = """
 -- Job postings from Slack channels
@@ -40,6 +40,11 @@ CREATE TABLE IF NOT EXISTS slack_jobs (
     applied BOOLEAN DEFAULT FALSE,
     applied_at TIMESTAMP,
     match_score REAL,
+    
+    -- Relevance
+    is_relevant BOOLEAN,
+    engagement_type_label TEXT,
+    relevance_reason TEXT,
 
     -- Unique constraint for deduplication
     UNIQUE(message_ts, channel_id)

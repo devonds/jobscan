@@ -28,6 +28,9 @@ class SheetsSync:
         "Match Score",
         "Applied",
         "Source",
+        "Relevant?",
+        "Engagement Type",
+        "Reasoning"
     ]
 
     def __init__(
@@ -99,6 +102,9 @@ class SheetsSync:
             f"{job.match_score:.0f}%" if job.match_score else "",
             "Yes" if job.applied else "No",
             job.channel_name or job.channel_id,
+            "Yes" if job.is_relevant else ("No" if job.is_relevant is False else ""),
+            job.engagement_type_label or "",
+            job.relevance_reason or "",
         ]
 
     def sync_jobs(self, jobs: list[SlackJobPosting]) -> int:
